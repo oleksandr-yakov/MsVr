@@ -8,6 +8,7 @@ let texPoint = [0, 0]
 let sphere;
 let stereocamera;
 let ui;
+let videoFeed, videoT, texture, bgSurface;
 
 let R = 1;
 let a = 0.5;
@@ -185,7 +186,7 @@ function ShaderProgram(name, program) {
  * (Note that the use of the above drawPrimitive function is not an efficient
  * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
  */
-function draw() {
+function draw(animate = false) {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -216,6 +217,19 @@ function draw() {
     gl.uniform2f(shProgram.iTexPoint, texPoint[0] / (Math.PI * 2), texPoint[1] / Math.PI);
     gl.uniform1f(shProgram.iRotate, document.getElementById('rotate').value);
 
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.identity());
+    gl.bindTexture(gl.TEXTURE_2D, videoT);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        videoFeed
+    );
+    bgSurface.Draw()
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
     stereocamera.ApplyLeftFrustum()
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(stereocamera.mProjectionMatrix, m4.multiply(stereocamera.mModelViewMatrix, matAccum1)));
     gl.colorMask(true, false, false, false);
@@ -229,6 +243,9 @@ function draw() {
     // gl.uniform4fv(shProgram.iColor, [1, 0, 1, 1]);
     // gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(modelViewProjection, m4.translation(...CreateVertex(R, a, n, ...texPoint))));
     // sphere.Draw()
+    if(animate){
+        window.requestAnimationFrame(draw)
+    }
 }
 
 let CreateVertex = (R, a, n, phi, v) => {
@@ -305,9 +322,9 @@ function CreateSurfaceData(R, a, n, segments) {
 function initGL() {
     ui = new dat.GUI();
     console.log(ui)
-    stereocamera = new StereoCamera(15, 0.1, 1, 15, 0.1, 20)
+    stereocamera = new StereoCamera(15, 6, 1, 15, 0.1, 20)
     ui.add(stereocamera, 'mConvergence', 15, 100, 1).onChange(draw)
-    ui.add(stereocamera, 'mEyeSeparation', 0.1, 1, 0.01).onChange(draw)
+    ui.add(stereocamera, 'mEyeSeparation', 6, 16, 0.1).onChange(draw)
     ui.add(stereocamera, 'mFOV', 0.1, 3.1, 0.01).onChange(draw)
     ui.add(stereocamera, 'mNearClippingDistance', 0.1, 20, 0.01).onChange(draw)
     let prog = createProgram(gl, vertexShaderSource, fragmentShaderSource);
@@ -331,6 +348,10 @@ function initGL() {
     sphere = new Model()
     sphere.BufferData(CreateSphereList(1, 0.1))
     sphere.BufferNormalData(CreateSphereList(1, 0.1))
+    const planeTextures2 = [0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1]
+    bgSurface = new Model('Background');
+    bgSurface.BufferData([1, 1, 0, -1, -1, 0, -1, 1, 0, -1, -1, 0, 1, 1, 0, 1, -1, 0])
+    bgSurface.BufferNormalData([0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1])
 
 
 
@@ -374,6 +395,7 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+    CreateCamera()
     let canvas;
     try {
         canvas = document.getElementById("webglcanvas");
@@ -398,11 +420,12 @@ function init() {
 
     spaceball = new TrackballRotator(canvas, draw, 0);
     LoadTexture()
+    CreateVideoTexture()
     draw();
 }
 
 function LoadTexture() {
-    let texture = gl.createTexture();
+    texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -421,7 +444,7 @@ function LoadTexture() {
             image
         );
         console.log("imageLoaded")
-        draw()
+        draw(1)
     }
 }
 
@@ -439,4 +462,23 @@ window.onkeydown = (e) => {
         texPoint[1] = Math.min(texPoint[1] + 0.1, Math.PI);
     }
     draw()
+}
+
+function CreateVideoTexture() {
+    videoT = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, videoT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+let webcam; // global variable in order for the first method to work
+function CreateCamera() {
+    videoFeed = document.createElement('video');
+    videoFeed.setAttribute('autoplay', true);
+    navigator.getUserMedia({ video: true, audio: false }, function (stream) {
+        videoFeed.srcObject = stream;
+    }, function (e) {
+        console.error('Rejected!', e);
+    });
 }
