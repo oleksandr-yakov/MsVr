@@ -34,16 +34,26 @@ let MS2S = 1.0 / 1000.0;
 // some constants
 
 function readSensor() { // should be ran once at the beginning of init
-    timestamp = Date.now();
-    sensor = new Gyroscope();
-    sensor.addEventListener('reading', () => {
-        timestamp = Date.now();
-        xG = sensor.x
-        yG = sensor.y
-        zG = sensor.z
-        sensorToRotationMatrix()
-    })
-    sensor.start();
+    window.addEventListener(
+        "deviceorientation",
+        (e) => {
+            rotationMatrix = m4.multiply(
+                m4.xRotation(deg2rad(e.beta)), m4.multiply(
+                    m4.yRotation(deg2rad(e.gamma)),
+                    m4.zRotation(deg2rad(e.alpha))))
+        },
+        true,
+    );
+    // timestamp = Date.now();
+    // sensor = new Gyroscope();
+    // sensor.addEventListener('reading', () => {
+    //     timestamp = Date.now();
+    //     xG = sensor.x
+    //     yG = sensor.y
+    //     zG = sensor.z
+    //     sensorToRotationMatrix()
+    // })
+    // sensor.start();
     started = true
 
 }
@@ -333,7 +343,7 @@ function draw(animate = false) {
     gl.clear(gl.DEPTH_BUFFER_BIT);
     stereocamera.ApplyLeftFrustum()
     if (started) {
-        sensorToRotationMatrix()
+        // sensorToRotationMatrix()
         gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(stereocamera.mProjectionMatrix, m4.multiply(stereocamera.mModelViewMatrix, m4.multiply(matAccum1, rotationMatrix))));
         gl.colorMask(true, false, false, false);
         surface.Draw();

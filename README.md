@@ -1,4 +1,4 @@
-# MsVr PA1
+# MsVr PA4
 
 ## In 3, a gyroscope is used, and in 4, a software sensor
 
@@ -9,5 +9,5 @@
 Figure from VGGI
 
 
-![Example of the program](./exmp/lab3_exmpl.gif)
+![Example of the program](./exmp/lab4_exmpl.gif)
 Example of the program
