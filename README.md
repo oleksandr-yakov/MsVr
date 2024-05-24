@@ -10,4 +10,5 @@ Figure from VGGI
 
 
 ![Example of the program](./exmp/lab4_exmpl.gif)
+
 Example of the program
