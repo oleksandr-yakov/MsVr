@@ -16,9 +16,10 @@ using
 ## WARNING
 ### It was created for playback in headphones, because unfortunately there is no alternative
 
-
 1 Example of the program
-![1 Example of the program](./exmpl/cgw_1.gif)
+![1 Example of the program](./exmpl/cgw_2.gif)
+
 
 2 Example of the program
-![2 Example of the program](./exmpl/cgw_2.gif)
+![2 Example of the program](./exmpl/cgw_1.gif)
+
