@@ -32,6 +32,13 @@ let timestamp,
 let E = 0.0001
 let MS2S = 1.0 / 1000.0;
 // some constants
+// audio context initialization
+let audio = null;
+let context;
+let source;
+let highpass;
+let panner;
+
 
 function readSensor() { // should be ran once at the beginning of init
     window.addEventListener(
@@ -41,6 +48,9 @@ function readSensor() { // should be ran once at the beginning of init
                 m4.xRotation(deg2rad(e.beta)), m4.multiply(
                     m4.yRotation(deg2rad(e.gamma)),
                     m4.zRotation(deg2rad(e.alpha))))
+            beta = e.beta
+            gamma = e.gamma
+            alpha = e.alpha
         },
         true,
     );
@@ -341,6 +351,11 @@ function draw(animate = false) {
     bgSurface.Draw()
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.clear(gl.DEPTH_BUFFER_BIT);
+    const audioRLConfig = getVectorFromAngles()
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.translation(...audioRLConfig));
+    sphere.Draw()
+    panner && panner.setPosition(...audioRLConfig)
+    gl.clear(gl.DEPTH_BUFFER_BIT);
     stereocamera.ApplyLeftFrustum()
     if (started) {
         // sensorToRotationMatrix()
@@ -357,7 +372,7 @@ function draw(animate = false) {
     gl.colorMask(true, true, true, true);
     // gl.uniform4fv(shProgram.iColor, [1, 0, 1, 1]);
     // gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(modelViewProjection, m4.translation(...CreateVertex(R, a, n, ...texPoint))));
-    // sphere.Draw()
+
 
     if (animate) {
         window.requestAnimationFrame(draw)
@@ -438,7 +453,7 @@ function CreateSurfaceData(R, a, n, segments) {
 function initGL() {
     ui = new dat.GUI();
     console.log(ui)
-    stereocamera = new StereoCamera(15, 6, 1, 15, 0.1, 20)
+    stereocamera = new StereoCamera(15, 6, 1, 60, 0.1, 20)
     ui.add(stereocamera, 'mConvergence', 15, 100, 1).onChange(draw)
     ui.add(stereocamera, 'mEyeSeparation', 6, 16, 0.1).onChange(draw)
     ui.add(stereocamera, 'mFOV', 0.1, 3.1, 0.01).onChange(draw)
@@ -511,6 +526,7 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+    audioContextInitialization()
     readSensor()
     CreateCamera()
     let canvas;
@@ -600,4 +616,88 @@ function CreateCamera() {
     }, function(e) {
         console.error('Rejected!', e);
     });
+}
+
+function audioContextInitialization() {
+    audio = document.getElementById('idAudi');
+
+    audio.addEventListener('play', () => {
+        if (!context) {
+            context = new AudioContext();
+            source = context.createMediaElementSource(audio);
+            panner = context.createPanner();
+            source.connect(panner);
+            highpass = context.createBiquadFilter();
+            panner.connect(highpass);
+            highpass.connect(context.destination);
+
+            highpass.type = 'highpass';
+            highpass.Q.value = 0.78;
+            highpass.frequency.value = 7000;
+            highpass.gain.value = 1; // 1 db as gain is not used in reject(notch) filter
+            context.resume();
+        }
+    })
+
+
+    audio.addEventListener('pause', () => {
+        console.log('pause');
+        context.resume();
+    })
+    let highState = document.getElementById('highState');
+    highState.addEventListener('change', function() {
+        if (highState.checked) {
+
+            panner.disconnect();
+            panner.connect(highpass);
+            highpass.connect(context.destination);
+        } else {
+            panner.disconnect();
+            panner.connect(context.destination);
+        }
+    });
+    audio.play();
+}
+
+function getVectorFromAngles() {
+    const alphaRad = (alpha * Math.PI) / 180;
+    const betaRad = (beta * Math.PI) / 180;
+    const gammaRad = (gamma * Math.PI) / 180;
+
+    let vector = [0, 1, 0];
+
+    const rotZ = [
+        [Math.cos(gammaRad), -Math.sin(gammaRad), 0],
+        [Math.sin(gammaRad), Math.cos(gammaRad), 0],
+        [0, 0, 1]
+    ];
+    vector = multiplyMatrixVector(rotZ, vector);
+
+    const rotY = [
+        [Math.cos(betaRad), 0, Math.sin(betaRad)],
+        [0, 1, 0],
+        [-Math.sin(betaRad), 0, Math.cos(betaRad)]
+    ];
+    vector = multiplyMatrixVector(rotY, vector);
+
+    const rotX = [
+        [1, 0, 0],
+        [0, Math.cos(alphaRad), -Math.sin(alphaRad)],
+        [0, Math.sin(alphaRad), Math.cos(alphaRad)]
+    ];
+    vector = multiplyMatrixVector(rotX, vector);
+
+    return vector;
+}
+
+function multiplyMatrixVector(matrix, vector) {
+    const result = [];
+    for (let i = 0; i < matrix.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < vector.length; j++) {
+            sum += matrix[i][j] * vector[j];
+        }
+        result.push(sum);
+    }
+    return result;
 }

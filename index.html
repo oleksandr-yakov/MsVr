@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
-    <title>PA4</title>
+    <title>RHR</title>
     <style>
         body {
             background-color: #EEEEEE;
@@ -39,8 +39,12 @@
         <input type="range" id="rotate" min="0" max="6.28" step="0.02" value="0.0" onchange="draw()">
     </div>
 
-
-
+    <audio id="idAudi"
+        src="https://25cd0c7c-9f6b-4c7d-a5ff-f96c13f5dce9-00-gve3xc0j9n2x.picard.replit.dev/hymn.mp3" controls
+        crossorigin="anonymous"></audio>
+    <br>
+    <label for="highState">Notch filter has been enabled(on/off)</label>
+    <input type="checkbox" name="highState" id="highState" checked>
 
     <div id="canvas-holder">
         <canvas width="600" height="600" id="webglcanvas" style="background-color:red"></canvas>
