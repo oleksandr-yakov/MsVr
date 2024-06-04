@@ -21,4 +21,4 @@ using
 ![1 Example of the program](./exmpl/cgw_1.gif)
 
 2 Example of the program
-![2 Example of the program](./exmpl/CGW_2.gif)
+![2 Example of the program](./exmpl/cgw_2.gif)
